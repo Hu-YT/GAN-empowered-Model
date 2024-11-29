@@ -4,7 +4,7 @@ from torch import nn
 
 
 class Generator(nn.Module):
-    def __init__(self, input_dim=10, im_chan=50, hidden_dim=64):
+    def __init__(self, input_dim, im_chan=50, hidden_dim=64):
         super(Generator, self).__init__()
         self.input_dim = input_dim
         # Build the neural network
@@ -18,18 +18,18 @@ class Generator(nn.Module):
     def make_gen_block(self, input_channels, output_channels, kernel_size=3, stride=2, final_layer=False):
         if not final_layer:
             return nn.Sequential(
-                nn.convTransposed2d(input_channels, output_channels, kernel_size, stride),
+                nn.ConvTranspose2d(input_channels, output_channels, kernel_size, stride),
                 nn.BatchNorm2d(output_channels),
                 nn.ReLU(inplace=True),
             )
         else:
             return nn.Sequential(
                 nn.ConvTranspose2d(input_channels, output_channels, kernel_size, stride),
-                nn.Tanh,
+                nn.Tanh(),
             )
 
     def forward(self, noise):
-        x = noise.view(len(noise), self.z_dim, 1, 1)
+        x = noise.view(len(noise), self.input_dim, 1, 1)
         return self.gen(x)
 
 def get_noise(n_samples, z_dim, device='cpu'):
@@ -47,13 +47,13 @@ class Critic(nn.Module):
     def make_crit_block(self, input_channels, output_channels, kernel_size=4, stride=2, final_layer=False):
         if not final_layer:
             return nn.Sequential(
-                nn.Conv2d(input_channels, output_channels, kernel_size, stride),
+                nn.ConvTranspose2d(input_channels, output_channels, kernel_size, stride),
                 nn.BatchNorm2d(output_channels),
                 nn.LeakyReLU(0.2, inplace=True),
             )
         else:
             return nn.Sequential(
-                nn.Conv2d(input_channels, output_channels, kernel_size, stride),
+                nn.ConvTranspose2d(input_channels, output_channels, kernel_size, stride),
             )
 
     def forward(self, data):
