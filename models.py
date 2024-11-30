@@ -4,18 +4,18 @@ from torch import nn
 
 
 class Generator(nn.Module):
-    def __init__(self, input_dim, im_chan=50, hidden_dim=64):
+    def __init__(self, input_dim, im_chan=1, hidden_dim=64):
         super(Generator, self).__init__()
         self.input_dim = input_dim
         # Build the neural network
         self.gen = nn.Sequential(
             self.make_gen_block(input_dim, hidden_dim * 4),
             self.make_gen_block(hidden_dim * 4, hidden_dim * 2, kernel_size=4, stride=1), #DCGAN
-            self.make_gen_block(hidden_dim * 2, hidden_dim),
+            self.make_gen_block(hidden_dim * 2, hidden_dim, kernel_size=2, stride=1),
             self.make_gen_block(hidden_dim, im_chan, kernel_size=4, final_layer=True),
         )
 
-    def make_gen_block(self, input_channels, output_channels, kernel_size=3, stride=2, final_layer=False):
+    def make_gen_block(self, input_channels, output_channels, kernel_size=3, stride=1, final_layer=False):
         if not final_layer:
             return nn.Sequential(
                 nn.ConvTranspose2d(input_channels, output_channels, kernel_size, stride),
@@ -33,10 +33,10 @@ class Generator(nn.Module):
         return self.gen(x)
 
 def get_noise(n_samples, z_dim, device='cpu'):
-    return torch.randn(n_samples, z_dim, device=device)
+    return torch.randn(n_samples, z_dim, 1, 1, device=device)
 
 class Critic(nn.Module):
-    def __init__(self, im_chan=50, hidden_dim=64):
+    def __init__(self, im_chan=1, hidden_dim=64):
         super(Critic, self).__init__()
         self.crit = nn.Sequential(
             self.make_crit_block(im_chan, hidden_dim),

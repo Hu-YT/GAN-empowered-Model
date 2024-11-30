@@ -1,21 +1,23 @@
 from mpmath.identification import transforms
 from torch.utils.data import DataLoader
 from wandb.integration.torch.wandb_torch import torch
-
+from tqdm.auto import tqdm
 from data_processing import data_process
 from models import Generator, Critic, get_noise
 from condition import get_one_hot_labels, combine_vectors
 from gradient_penalty import get_gradient, gradient_penalty
 from loss import get_gen_loss, get_crit_loss
+import torch
 import torch.nn as nn
 import torch.optim
 from scipy.io import loadmat, savemat
+import os
 
 
 # initializing parameters
 data_shape = (10, 5)
 n_classes = 17 * 72
-n_epochs = 100
+n_epochs = 2000
 z_dim = 64
 batch_size = 8
 lr = 0.0002
@@ -27,8 +29,10 @@ device = 'cpu'
 
 # data_process()
 filepath = 'car1.mat'
-dataset = data_process(filepath)
+dataset = data_process(filepath).unsqueeze(1)
+# print(dataset.shape)
 dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+
 # for batch in dataloader:
 
 # initializing generator, critic and optimizers
@@ -52,16 +56,19 @@ generator_losses = []
 critic_losses = []
 
 for epoch in range(n_epochs):
-    for real in dataloader:
+    for real in tqdm(dataloader):
         cur_batch_size = len(real)
         real = real.to(device)
-        
+        #print(real.shape)
         mean_iteration_critic_loss = 0
         for _ in range(crit_repeats):
             ### Update critic ###
             crit_opt.zero_grad()
             fake_noise = get_noise(cur_batch_size, z_dim, device)
+            #print(fake_noise.shape)
             fake = gen(fake_noise)
+            #print(fake.shape)
+            fake = fake.view(fake.shape[0], fake.shape[1], fake.shape[2], 2, -1).mean(dim=3)
             crit_fake_pred = crit(fake.detach())
             crit_real_pred = crit(real)
 
@@ -81,9 +88,13 @@ for epoch in range(n_epochs):
         gen_opt.zero_grad()
         fake_noise_2 = get_noise(cur_batch_size, z_dim, device)
         fake_2 = gen(fake_noise_2)
+
+        fake_2 = fake_2.view(fake_2.shape[0], fake_2.shape[1], fake_2.shape[2], 2, -1).mean(dim=3)
+        #print(fake_2.shape)
         if (epoch + 1) % 10 == 0:
             fake_numpy = fake_2.cpu().detach().numpy()
-            savemat(f'generated_data_epoch_{epoch + 1}.mat', {'fake_numpy': fake_numpy})
+            output_path = os.path.join(os.getcwd(), 'result', f'generated_data_epoch_{epoch + 1}.mat')
+            savemat(output_path, {'fake_numpy': fake_numpy})
         crit_fake_pred = crit(fake_2)
 
         gen_loss = get_gen_loss(crit_fake_pred)
