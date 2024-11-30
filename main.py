@@ -10,7 +10,7 @@ from loss import get_gen_loss, get_crit_loss
 import torch
 import torch.nn as nn
 import torch.optim
-from scipy.io import loadmat, savemat
+from scipy.io import savemat
 import os
 
 
@@ -55,6 +55,9 @@ cur_step = 0
 generator_losses = []
 critic_losses = []
 
+# fake_noise_2 = get_noise(cur_batch_size, z_dim, device)
+fake_noise_2 = get_noise(batch_size, z_dim, device)
+
 for epoch in range(n_epochs):
     for real in tqdm(dataloader):
         cur_batch_size = len(real)
@@ -83,18 +86,14 @@ for epoch in range(n_epochs):
 
             crit_opt.step()
         critic_losses += [mean_iteration_critic_loss]
-
         ### Update generator ###
         gen_opt.zero_grad()
-        fake_noise_2 = get_noise(cur_batch_size, z_dim, device)
+
         fake_2 = gen(fake_noise_2)
 
         fake_2 = fake_2.view(fake_2.shape[0], fake_2.shape[1], fake_2.shape[2], 2, -1).mean(dim=3)
         #print(fake_2.shape)
-        if (epoch + 1) % 10 == 0:
-            fake_numpy = fake_2.cpu().detach().numpy()
-            output_path = os.path.join(os.getcwd(), 'result', f'generated_data_epoch_{epoch + 1}.mat')
-            savemat(output_path, {'fake_numpy': fake_numpy})
+
         crit_fake_pred = crit(fake_2)
 
         gen_loss = get_gen_loss(crit_fake_pred)
@@ -104,7 +103,16 @@ for epoch in range(n_epochs):
 
         generator_losses += [gen_loss.item()]
 
+        if (epoch + 1) % 10 == 0:
+            fake_numpy = fake_2.cpu().detach().numpy()
+            output_path = os.path.join(os.getcwd(), 'result', f'generated_data_epoch_{epoch + 1}.mat')
+            savemat(output_path, {'fake_numpy': fake_numpy})
+
         cur_step += 1
 
+output_path = os.path.join(os.getcwd(), 'losses', f'critic_loss.mat')
+savemat(output_path, {'critic_losses': critic_losses})
+output_path = os.path.join(os.getcwd(), 'losses', f'generator_loss.mat')
+savemat(output_path, {'generator_losses': generator_losses})
 
 
