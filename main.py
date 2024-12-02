@@ -1,6 +1,5 @@
 from mpmath.identification import transforms
 from torch.utils.data import DataLoader
-from wandb.integration.torch.wandb_torch import torch
 from tqdm.auto import tqdm
 from data_processing import data_process
 from models import Generator, Critic, get_noise
@@ -17,7 +16,7 @@ import os
 # initializing parameters
 data_shape = (10, 5)
 n_classes = 17 * 72
-n_epochs = 2000
+n_epochs = 10000
 z_dim = 64
 batch_size = 8
 lr = 0.0002
@@ -25,7 +24,7 @@ beta_1 = 0.5
 beta_2 = 0.999
 c_lambda = 10
 crit_repeats = 5
-device = 'cpu'
+device = 'cuda'
 
 # data_process()
 filepath = 'car1.mat'
@@ -56,7 +55,7 @@ generator_losses = []
 critic_losses = []
 
 # fake_noise_2 = get_noise(cur_batch_size, z_dim, device)
-fake_noise_2 = get_noise(batch_size, z_dim, device)
+fake_noise_3 = get_noise(1, z_dim, device)
 
 for epoch in range(n_epochs):
     for real in tqdm(dataloader):
@@ -88,7 +87,7 @@ for epoch in range(n_epochs):
         critic_losses += [mean_iteration_critic_loss]
         ### Update generator ###
         gen_opt.zero_grad()
-
+        fake_noise_2 = get_noise(cur_batch_size, z_dim, device)
         fake_2 = gen(fake_noise_2)
 
         fake_2 = fake_2.view(fake_2.shape[0], fake_2.shape[1], fake_2.shape[2], 2, -1).mean(dim=3)
@@ -104,7 +103,10 @@ for epoch in range(n_epochs):
         generator_losses += [gen_loss.item()]
 
         if (epoch + 1) % 10 == 0:
-            fake_numpy = fake_2.cpu().detach().numpy()
+            fake_noise_3 = get_noise(8, z_dim, device)
+            fake_3 = gen(fake_noise_3)
+            fake_3 = fake_3.view(fake_2.shape[0], fake_2.shape[1], fake_2.shape[2], 2, -1).mean(dim=3)
+            fake_numpy = fake_3.cpu().detach().numpy()
             output_path = os.path.join(os.getcwd(), 'result', f'generated_data_epoch_{epoch + 1}.mat')
             savemat(output_path, {'fake_numpy': fake_numpy})
 

@@ -1,2 +1,5 @@
 *.mat
 /result/
+/losses/
+*.xlsx
+/log/
