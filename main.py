@@ -16,7 +16,7 @@ import os
 # initializing parameters
 data_shape = (10, 5)
 n_classes = 17 * 72
-n_epochs = 10000
+n_epochs = 10
 z_dim = 64
 batch_size = 8
 lr = 0.0002
