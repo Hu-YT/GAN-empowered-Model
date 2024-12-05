@@ -16,7 +16,7 @@ import os
 # initializing parameters
 data_shape = (10, 5)
 n_classes = 17 * 72
-n_epochs = 10
+n_epochs = 20000
 z_dim = 64
 batch_size = 8
 lr = 0.0002
@@ -36,9 +36,9 @@ dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
 # initializing generator, critic and optimizers
 gen = Generator(z_dim).to(device)
-gen_opt = torch.optim.Adam(gen.parameters(), lr=lr, betas=(beta_1, beta_2))
+gen_opt = torch.optim.RMSprop(gen.parameters(), lr=lr)
 crit = Critic().to(device)
-crit_opt = torch.optim.Adam(crit.parameters(), lr=lr, betas=(beta_1, beta_2))
+crit_opt = torch.optim.RMSprop(crit.parameters(), lr=lr)
 
 def weights_init(m):
     if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
@@ -105,7 +105,7 @@ for epoch in range(n_epochs):
         if (epoch + 1) % 10 == 0:
             fake_noise_3 = get_noise(8, z_dim, device)
             fake_3 = gen(fake_noise_3)
-            fake_3 = fake_3.view(fake_2.shape[0], fake_2.shape[1], fake_2.shape[2], 2, -1).mean(dim=3)
+            fake_3 = fake_3.view(fake_3.shape[0], fake_3.shape[1], fake_3.shape[2], 2, -1).mean(dim=3)
             fake_numpy = fake_3.cpu().detach().numpy()
             output_path = os.path.join(os.getcwd(), 'result', f'generated_data_epoch_{epoch + 1}.mat')
             savemat(output_path, {'fake_numpy': fake_numpy})
