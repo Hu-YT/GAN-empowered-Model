@@ -1,7 +1,8 @@
+import numpy as np
 from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 from data_processing import data_process
-from models_CNN import Generator, Critic, get_noise
+from models_Linear import Generator, Critic, get_noise
 from gradient_penalty import get_gradient, gradient_penalty
 from loss import get_gen_loss, get_crit_loss, get_c_fake, get_c_real
 import torch
@@ -14,10 +15,10 @@ import os
 # initializing parameters
 data_shape = (10, 5)
 n_classes = 17 * 72
-n_epochs = 200
+n_epochs = 10
 z_dim = 64
 batch_size = 72
-lr = 0.0002
+lr = 0.00005
 beta_1 = 0.5
 beta_2 = 0.999
 c_lambda = 10
@@ -35,7 +36,7 @@ dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 # initializing generator, critic and optimizers
 gen = Generator(z_dim).to(device)
 gen_opt = torch.optim.RMSprop(gen.parameters(), lr=lr)
-crit = Critic().to(device)
+crit = Critic(np.prod(data_shape)).to(device)
 crit_opt = torch.optim.RMSprop(crit.parameters(), lr=lr)
 
 def weights_init(m):
@@ -44,13 +45,12 @@ def weights_init(m):
     if isinstance(m, nn.BatchNorm2d):
         torch.nn.init.normal_(m.weight, 0.0, 0.02)
         torch.nn.init.constant_(m.bias, 0.0)
-
-    # if isinstance(m, nn.Linear) or isinstance(m, nn.ConvTranspose2d):
-    #     torch.nn.init.normal_(m.weight, 0.0, 0.02)
-    #     # torch.nn.init.normal_(m.bias, 0.0)
-    # if isinstance(m, nn.BatchNorm1d):
-    #     torch.nn.init.normal_(m.weight, 0.0, 0.02)
-    #     torch.nn.init.normal_(m.bias, 0.0)
+    if isinstance(m, nn.Linear):
+        torch.nn.init.normal_(m.weight, 0.0, 0.02)
+        torch.nn.init.constant_(m.bias, 0.0)
+    if isinstance(m, nn.BatchNorm1d):
+        torch.nn.init.normal_(m.weight, 1.0, 0.02)
+        torch.nn.init.constant_(m.bias, 0.0)
 gen = gen.apply(weights_init)
 crit = crit.apply(weights_init)
 
@@ -79,7 +79,7 @@ for epoch in range(n_epochs):
             #print(fake_noise.shape)
             fake = gen(fake_noise)
             #print(fake.shape)
-            fake = fake.view(fake.shape[0], fake.shape[1], fake.shape[2], 2, -1).mean(dim=3)
+            # fake = fake.view(fake.shape[0], fake.shape[1], fake.shape[2], 2, -1).mean(dim=3)
             crit_fake_pred = crit(fake.detach())
             crit_real_pred = crit(real)
             C_fake = get_c_fake(fake.detach())
@@ -104,7 +104,7 @@ for epoch in range(n_epochs):
         fake_noise_2 = get_noise(cur_batch_size, z_dim, device)
         fake_2 = gen(fake_noise_2)
 
-        fake_2 = fake_2.view(fake_2.shape[0], fake_2.shape[1], fake_2.shape[2], 2, -1).mean(dim=3)
+        # fake_2 = fake_2.view(fake_2.shape[0], fake_2.shape[1], fake_2.shape[2], 2, -1).mean(dim=3)
         #print(fake_2.shape)
 
         crit_fake_pred = crit(fake_2)
@@ -120,7 +120,7 @@ for epoch in range(n_epochs):
         if (epoch + 1) % 10 == 0:
             fake_noise_3 = get_noise(8, z_dim, device)
             fake_3 = gen(fake_noise_3)
-            fake_3 = fake_3.view(fake_3.shape[0], fake_3.shape[1], fake_3.shape[2], 2, -1).mean(dim=3)
+            # fake_3 = fake_3.view(fake_3.shape[0], fake_3.shape[1], fake_3.shape[2], 2, -1).mean(dim=3)
             fake_numpy = fake_3.cpu().detach().numpy()
             output_path = os.path.join(os.getcwd(), 'result', f'generated_data_epoch_{epoch + 1}.mat')
             savemat(output_path, {'fake_numpy': fake_numpy})
