@@ -1,11 +1,9 @@
-from mpmath.identification import transforms
 from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 from data_processing import data_process
-from models import Generator, Critic, get_noise
-from condition import get_one_hot_labels, combine_vectors
+from models_CNN import Generator, Critic, get_noise
 from gradient_penalty import get_gradient, gradient_penalty
-from loss import get_gen_loss, get_crit_loss
+from loss import get_gen_loss, get_crit_loss, get_c_fake, get_c_real
 import torch
 import torch.nn as nn
 import torch.optim
@@ -16,9 +14,9 @@ import os
 # initializing parameters
 data_shape = (10, 5)
 n_classes = 17 * 72
-n_epochs = 20000
+n_epochs = 200
 z_dim = 64
-batch_size = 8
+batch_size = 72
 lr = 0.0002
 beta_1 = 0.5
 beta_2 = 0.999
@@ -46,6 +44,13 @@ def weights_init(m):
     if isinstance(m, nn.BatchNorm2d):
         torch.nn.init.normal_(m.weight, 0.0, 0.02)
         torch.nn.init.constant_(m.bias, 0.0)
+
+    # if isinstance(m, nn.Linear) or isinstance(m, nn.ConvTranspose2d):
+    #     torch.nn.init.normal_(m.weight, 0.0, 0.02)
+    #     # torch.nn.init.normal_(m.bias, 0.0)
+    # if isinstance(m, nn.BatchNorm1d):
+    #     torch.nn.init.normal_(m.weight, 0.0, 0.02)
+    #     torch.nn.init.normal_(m.bias, 0.0)
 gen = gen.apply(weights_init)
 crit = crit.apply(weights_init)
 
@@ -53,6 +58,8 @@ crit = crit.apply(weights_init)
 cur_step = 0
 generator_losses = []
 critic_losses = []
+critic_real_values = []
+critic_fake_values = []
 
 # fake_noise_2 = get_noise(cur_batch_size, z_dim, device)
 fake_noise_3 = get_noise(1, z_dim, device)
@@ -63,6 +70,8 @@ for epoch in range(n_epochs):
         real = real.to(device)
         #print(real.shape)
         mean_iteration_critic_loss = 0
+        critic_real_value = 0
+        critic_fake_value = 0
         for _ in range(crit_repeats):
             ### Update critic ###
             crit_opt.zero_grad()
@@ -73,7 +82,10 @@ for epoch in range(n_epochs):
             fake = fake.view(fake.shape[0], fake.shape[1], fake.shape[2], 2, -1).mean(dim=3)
             crit_fake_pred = crit(fake.detach())
             crit_real_pred = crit(real)
-
+            C_fake = get_c_fake(fake.detach())
+            C_real = get_c_real(real)
+            critic_real_value += C_fake / crit_repeats
+            critic_fake_value += C_real / crit_repeats
             epsilon = torch.rand(len(real), 1, 1, 1, device=device, requires_grad=True)
             gradient = get_gradient(crit, real, fake.detach(), epsilon)
             gp = gradient_penalty(gradient)
@@ -85,6 +97,8 @@ for epoch in range(n_epochs):
 
             crit_opt.step()
         critic_losses += [mean_iteration_critic_loss]
+        critic_real_values += [critic_real_value.item()]
+        critic_fake_values += [critic_fake_value.item()]
         ### Update generator ###
         gen_opt.zero_grad()
         fake_noise_2 = get_noise(cur_batch_size, z_dim, device)
@@ -94,6 +108,7 @@ for epoch in range(n_epochs):
         #print(fake_2.shape)
 
         crit_fake_pred = crit(fake_2)
+
 
         gen_loss = get_gen_loss(crit_fake_pred)
         gen_loss.backward()
@@ -116,5 +131,9 @@ output_path = os.path.join(os.getcwd(), 'losses', f'critic_loss.mat')
 savemat(output_path, {'critic_losses': critic_losses})
 output_path = os.path.join(os.getcwd(), 'losses', f'generator_loss.mat')
 savemat(output_path, {'generator_losses': generator_losses})
+output_path = os.path.join(os.getcwd(), 'losses', f'critic_real_values.mat')
+savemat(output_path, {'critic_real_values': critic_real_values})
+output_path = os.path.join(os.getcwd(), 'losses', f'critic_fake_values.mat')
+savemat(output_path, {'critic_fake_values': critic_fake_values})
 
 
