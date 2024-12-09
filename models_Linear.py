@@ -4,7 +4,7 @@ from torch import nn
 
 
 class Generator(nn.Module):
-    def __init__(self, input_dim, output_dim=50, hidden_dim=128):
+    def __init__(self, input_dim=64, output_dim=50, hidden_dim=128):
         super(Generator, self).__init__()
         self.input_dim = input_dim
         # Build the neural network
@@ -40,12 +40,13 @@ def get_noise(n_samples, z_dim, device='cuda'):
     return torch.randn(n_samples, z_dim, device=device)
 
 class Critic(nn.Module):
-    def __init__(self, input_dim, output_dim=1, hidden_dim=128):
+    def __init__(self, input_dim=50, output_dim=1, hidden_dim=128):
         super(Critic, self).__init__()
         self.crit = nn.Sequential(
             self.make_crit_block(input_dim, hidden_dim * 2),
             self.make_crit_block(hidden_dim * 2, hidden_dim * 4),
-            self.make_crit_block(hidden_dim * 4, output_dim, final_layer=True),
+            self.make_crit_block(hidden_dim * 4, hidden_dim * 8),
+            self.make_crit_block(hidden_dim * 8, output_dim, final_layer=True),
         )
 
     def make_crit_block(self, input_channels, output_channels, final_layer=False):
