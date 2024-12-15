@@ -15,7 +15,7 @@ import os
 # initializing parameters
 data_shape = (10, 5)
 n_classes = 17 * 72
-n_epochs = 20000
+n_epochs = 2000
 z_dim = 64
 batch_size = 72
 lr_crit = 0.00005
@@ -23,7 +23,7 @@ lr_gen = 0.00005
 beta_1 = 0.5
 beta_2 = 0.999
 c_lambda = 10
-crit_repeats = 10
+crit_repeats = 5
 device = 'cuda'
 
 # data_process()
@@ -40,6 +40,9 @@ gen_opt = torch.optim.RMSprop(gen.parameters(), lr=lr_gen)
 crit = Critic().to(device)
 crit_opt = torch.optim.RMSprop(crit.parameters(), lr=lr_crit)
 
+#gen_opt.load_state_dict(torch.load('gen_opt.pth'))
+#crit_opt.load_state_dict(torch.load('crit_opt.pth'))
+
 def weights_init(m):
     if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
         torch.nn.init.normal_(m.weight, 0.0, 0.02)
@@ -52,8 +55,8 @@ def weights_init(m):
     if isinstance(m, nn.BatchNorm1d):
         torch.nn.init.normal_(m.weight, 1.0, 0.02)
         torch.nn.init.constant_(m.bias, 0.0)
-gen = gen.apply(weights_init)
-crit = crit.apply(weights_init)
+# gen = gen.apply(weights_init)
+# crit = crit.apply(weights_init)
 
 # put it all together
 cur_step = 0
@@ -63,7 +66,7 @@ critic_real_values = []
 critic_fake_values = []
 
 # fake_noise_2 = get_noise(cur_batch_size, z_dim, device)
-fake_noise_3 = get_noise(2, z_dim, device)
+# fake_noise_3 = get_noise(204, z_dim, device)
 
 for epoch in tqdm(range(n_epochs)):
     for real in dataloader:
@@ -122,7 +125,7 @@ for epoch in tqdm(range(n_epochs)):
         generator_losses += [gen_loss.item()]
 
         if (epoch + 1) % 10 == 0:
-            # fake_noise_3 = get_noise(8, z_dim, device)
+            fake_noise_3 = get_noise(204, z_dim, device)
             fake_3 = gen(fake_noise_3)
             # fake_3 = fake_3.view(fake_3.shape[0], fake_3.shape[1], fake_3.shape[2], 2, -1).mean(dim=3)
             fake_numpy = fake_3.cpu().detach().numpy()
@@ -131,6 +134,8 @@ for epoch in tqdm(range(n_epochs)):
             savemat(output_path, {'fake_numpy': fake_numpy})
 
         cur_step += 1
+
+# torch.save(gen_opt.state_dict(), os.path.join(os.getcwd(), 'gen_opt.pth'))
 
 output_path = os.path.join(os.getcwd(), 'losses', f'critic_loss.mat')
 savemat(output_path, {'critic_losses': critic_losses})

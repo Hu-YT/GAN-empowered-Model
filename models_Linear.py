@@ -12,6 +12,7 @@ class Generator(nn.Module):
             self.make_gen_block(input_dim, hidden_dim * 2),
             self.make_gen_block(hidden_dim * 2, hidden_dim * 4), #DCGAN
             self.make_gen_block(hidden_dim * 4, hidden_dim * 8),
+            # self.make_gen_block(hidden_dim * 8, hidden_dim * 4),
             self.make_gen_block(hidden_dim * 8, output_dim, final_layer=True),
         )
 
@@ -25,9 +26,10 @@ class Generator(nn.Module):
         else:
             return nn.Sequential(
                 nn.Linear(input_channels, output_channels),
-                nn.Tanh(),
+                # nn.Tanh(),
                 # nn.Sigmoid(),
             )
+
 
     def forward(self, noise):
         #x = noise.view(len(noise), self.input_dim, 1, 1)
